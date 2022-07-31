@@ -116,29 +116,31 @@ ORDER BY c1.Rentals DESC, c1.film_id, c1.customer_id;
 
 -- 9. For each film, list actor that has acted in more films.
 
-WITH CTE AS(
-SELECT title, film_id, actor_id, Films, Rank() OVER
-(PARTITION BY film_id ORDER BY Films DESC) AS "Ranking"
-FROM (
-	SELECT f.film_id, fa.actor_id, f.title, a.first_name, a.last_name, MAX(Films) AS "Films"
+SELECT
+	f.title AS "Title",
+    a.first_name AS "Name",
+    a.last_name AS "Surname",
+    Films
+FROM(
+	SELECT
+		film_id,
+        actor_id,
+        Films,
+        ROW_NUMBER() OVER (PARTITION BY film_id) AS "Ranking"
 	FROM(
-		SELECT actor_id, COUNT(film_id) AS "Films"
-		FROM film_actor
-		GROUP BY actor_id
-		) AS T1
-        LEFT JOIN film_actor AS fa
-ON T1.actor_id = fa.actor_id
-LEFT JOIN actor AS a
-ON T1.actor_id = a.actor_id
-LEFT JOIN film AS f
-ON fa.film_id = f.film_id
-GROUP BY fa.film_id, T1.actor_id
-) AS T2
-)
-SELECT title, a.first_name, a.last_name, Films
-FROM CTE
+		SELECT
+			film_id,
+            actor_id,
+            COUNT(film_id) OVER (PARTITION BY actor_id) AS "Films"
+			FROM film_actor
+			ORDER BY Films DESC, film_id
+            ) AS T1
+        ORDER BY Films DESC
+        ) AS T2
 INNER JOIN actor AS a
-ON CTE.actor_id = a.actor_id
+ON T2.actor_id = a.actor_id
+INNER JOIN film AS f
+ON T2.film_id = f.film_id
 WHERE Ranking = 1;
 /* In this case we had to use a subquery of a subquery to make this work,
 first we calculated the films for each actor,
